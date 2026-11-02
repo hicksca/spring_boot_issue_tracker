@@ -1,0 +1,17 @@
+version: '3.8'
+
+services:
+  tracker:
+    build: .
+    restart: unless-stopped
+    volumes:
+      - tracker-data:/data
+    environment:
+      DB_PATH: "/data/issues_db"
+      TRACKER_REPO: "spring-projects/spring-boot"
+      TRACKER_LABEL: "status: first-timers-only"
+      TRACKER_POLL_INTERVAL_MS: "300000"
+      TRACKER_GITHUB_TOKEN: ""
+
+volumes:
+  tracker-data:
