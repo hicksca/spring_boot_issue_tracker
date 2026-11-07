@@ -9,6 +9,7 @@ A containerized Spring Boot service that monitors GitHub repositories for first-
 - **GitHub REST API Polling**: Periodically queries GitHub for open issues with target labels (ignoring pull requests).
 - **Persistent Storage**: Uses Spring Data JPA and an embedded H2 database saved to disk/volumes to track seen issues.
 - **Dockerized**: Multi-stage Docker build targeting lightweight Alpine images on OpenJDK / Java 21 (`aarch64` & `x86_64`).
+- **Automated Test Suite**: Unit and integration tests powered by JUnit 5, MockWebServer, and Spring Data JPA test slices.
 - **Slack Alert Ready**: Formatted notification pipeline ready to integrate with incoming Slack webhooks.
 
 ---
@@ -22,22 +23,30 @@ spring_boot_issue_tracker/
 ├── build.gradle
 ├── settings.gradle
 ├── src/
-│   └── main/
-│       ├── java/
-│       │   └── com/
-│       │       └── tracker/
-│       │           ├── TrackerApplication.java
-│       │           ├── config/
-│       │           │   └── TrackerProperties.java
-│       │           ├── model/
-│       │           │   ├── GitHubIssueDto.java
-│       │           │   └── TrackedIssue.java
-│       │           ├── repository/
-│       │           │   └── TrackedIssueRepository.java
-│       │           └── service/
-│       │               └── IssueTrackerScheduler.java
-│       └── resources/
-│           └── application.properties
+│   ├── main/
+│   │   ├── java/
+│   │   │   └── com/
+│   │   │       └── tracker/
+│   │   │           ├── TrackerApplication.java
+│   │   │           ├── config/
+│   │   │           │   └── TrackerProperties.java
+│   │   │           ├── model/
+│   │   │           │   ├── GitHubIssueDto.java
+│   │   │           │   └── TrackedIssue.java
+│   │   │           ├── repository/
+│   │   │           │   └── TrackedIssueRepository.java
+│   │   │           └── service/
+│   │   │               └── IssueTrackerScheduler.java
+│   │   └── resources/
+│   │       └── application.properties
+│   └── test/
+│       └── java/
+│           └── com/
+│               └── tracker/
+│                   ├── repository/
+│                   │   └── TrackedIssueRepositoryTest.java
+│                   └── service/
+│                       └── IssueTrackerSchedulerTest.java
 └── README.md
 ```
 
@@ -62,6 +71,23 @@ Configuration values are mapped to `application.properties` and can be overridde
 | `TRACKER_LABEL` | `tracker.label` | `status: first-timers-only` | Target issue label to monitor. |
 | `TRACKER_POLL_INTERVAL_MS` | `tracker.poll-interval-ms` | `300000` (5 min) | Polling interval in milliseconds. |
 | `TRACKER_GITHUB_TOKEN` | `tracker.github-token` | *(empty)* | Optional Personal Access Token to raise rate limits (60/hr to 5,000/hr). |
+
+---
+
+## Running the Tests
+
+The test suite validates data persistence and GitHub API parsing without making live network calls to GitHub:
+
+- **`TrackedIssueRepositoryTest`**: `@DataJpaTest` slice test verifying H2 entity persistence, lookup, and existence checks.
+- **`IssueTrackerSchedulerTest`**: Uses OkHttp `MockWebServer` to mock the GitHub REST API, verifying proper URL encoding, query parameter construction, exclusion of pull requests, and deduplication of previously recorded issues.
+
+Run tests using the Gradle wrapper:
+
+```bash
+./gradlew test
+```
+
+An HTML test report is generated at `build/reports/tests/test/index.html`.
 
 ---
 
@@ -102,7 +128,7 @@ Data persists between container rebuilds via the named volume `tracker-data` mou
 
 ---
 
-## How to Test Issue Detection
+## How to Test Issue Detection Manually
 
 Because `spring-projects/spring-boot` rarely has open `status: first-timers-only` issues, you can verify alert triggering and database deduplication by temporarily modifying the target label:
 
@@ -146,3 +172,5 @@ if (webhookUrl != null && !webhookUrl.isBlank()) {
             .subscribe();
 }
 ```
+
+This project is licensed under the [ISC License](LICENSE).
